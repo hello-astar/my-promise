@@ -1,0 +1,15 @@
+{
+  "name": "my-promise",
+  "version": "1.0.0",
+  "description": "An Implement of Promises/A+",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node index.js",
+    "test": "promises-aplus-tests ./test/index.js"
+  },
+  "author": "astar",
+  "license": "ISC",
+  "devDependencies": {
+    "promises-aplus-tests": "^2.1.2"
+  }
+}
