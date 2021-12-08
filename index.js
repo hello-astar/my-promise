@@ -2,7 +2,7 @@
  * @Description: promise模拟实现
  * @Author: astar
  * @Date: 2021-12-07 17:08:44
- * @LastEditTime: 2021-12-08 17:09:50
+ * @LastEditTime: 2021-12-08 21:36:31
  * @LastEditors: astar
  */
 // promise的三种状态
@@ -96,7 +96,10 @@ class MyPromise {
     }
 
     try {
-      fn(resolve, reject)
+      // new Promise(resolve => { resolve({ then: function (resolve) { resolve(200) } }) }).then(res => { console.log(res) }) 输出值是200而非 { then: ... }
+      fn(function (res) {
+        resolvePromise(self, res, resolve, reject)
+      }, reject)
     } catch (e) {
       reject(e)
     }
@@ -112,7 +115,8 @@ class MyPromise {
     onFulfilled = typeof onFulfilled === 'function' ? onFulfilled : function (value) { return value }
     onRejected = typeof onRejected === 'function' ? onRejected : function (reason) { throw reason }
     let self = this
-    let promise2 = new MyPromise((resolve, reject) => {
+    const P = this.constructor
+    let promise2 = new P((resolve, reject) => {
       function success (value) {
         try {
           let x = onFulfilled(value)
@@ -148,6 +152,95 @@ class MyPromise {
     })
     return promise2
   }
+
+  /**
+  * catch是then的语法糖
+  * @author astar
+  * @date 2021-12-08 17:17
+  */
+  catch (onRejected) {
+    return this.then(null, onRejected)
+  }
+
+  /**
+  * 无论是fulfilled还是rejected都会调用其回调函数，value和reason会穿透到后面去
+  * @author astar
+  * @date 2021-12-08 18:23
+  */
+  finally (callback) {
+    const P = this.constructor
+    return this.then(
+      data => P.resolve(callback()).then(() => data),
+      err => P.resolve(callback()).then(() => { throw err })
+    )
+    /**
+     * 为什么不是下面这种形式呢
+     * 考虑callback函数返回一个promise，需等该promise执行完毕才能执行下一步。
+     * promise.finally(() => return new Promise(resolve => {
+     *    setTimeout(() => { resolve(100) }, 10000)
+     *  })
+     * ).then(data => { console.log(data) }) // 至少10000ms之后才会打印data
+     */
+    // return this.then(data => {
+    //   callback()
+    //   return data
+    // }, err => {
+    //   callback()
+    //   throw err
+    // })
+  }
+}
+
+MyPromise.race = function (promises) {
+  const P = this
+  return new P((resolve, reject) => {
+    for (let i = 0, len = promises.length; i < len; i++) {
+      let promise = promises[i]
+      if (promise instanceof P) {
+        promise.then(resolve, reject)
+      } else { // 参数不一定是promise // 转换为Promise实例
+        new P(resolve => {
+          resolve(promise)
+        }).then(resolve, reject)
+      }
+    }
+  })
+}
+
+MyPromise.all = function (promises) {
+  const P = this
+  return new P((resolve, reject) => {
+    let result = new Array(promises.length)
+    let count = 0
+    function noticeResolve (i, res) { // 全都resolve了才能resolve
+      result[i] = res
+      if (++count === promises.length) resolve(result)
+    }
+    for (let i = 0, len = promises.length; i < len; i++) {
+      let promise = promises[i]
+      if (promise instanceof P) {
+        promise.then(res => noticeResolve(i, res), reject)
+      } else { // 参数不一定是promise
+        new P(resolve => {
+          resolve(promise)
+        }).then(res => noticeResolve(i, res), reject)
+      }
+    }
+  })
+}
+
+MyPromise.resolve = function (x) {
+  const P = this
+  return new P(resolve => {
+    resolve(x)
+  })
+}
+
+MyPromise.reject = function (x) {
+  const P = this
+  return new P((resolve, reject) => {
+    reject(x)
+  })
 }
 
 module.exports = MyPromise
