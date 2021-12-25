@@ -2,7 +2,7 @@
  * @Description: promise模拟实现
  * @Author: astar
  * @Date: 2021-12-07 17:08:44
- * @LastEditTime: 2021-12-08 21:36:31
+ * @LastEditTime: 2021-12-26 01:32:56
  * @LastEditors: astar
  */
 // promise的三种状态
@@ -117,36 +117,30 @@ class MyPromise {
     let self = this
     const P = this.constructor
     let promise2 = new P((resolve, reject) => {
-      function success (value) {
-        try {
-          let x = onFulfilled(value)
-          resolvePromise(promise2, x, resolve, reject)
-        } catch (e) {
-          reject(e)
-        }
-      }
-      function fail (reason) {
-        try {
-          let x = onRejected(reason)
-          resolvePromise(promise2, x, resolve, reject)
-        } catch (e) {
-          reject(e)
+      function F (fn) {
+        return function (v) {
+          try {
+            let x = fn(v)
+            resolvePromise(promise2, x, resolve, reject)
+          } catch (e) {
+            reject(e)
+          }
         }
       }
       if (self.status === STATUS.PENDING) {
         // 存起来，等状态修改后执行
-        self.onFulfilledCallbacks.push(success)
-        self.onRejectedCallbacks.push(fail)
+        self.onFulfilledCallbacks.push(F(onFulfilled))
+        self.onRejectedCallbacks.push(F(onRejected))
       } else if (self.status === STATUS.FULFILLED) {
         // 2.2.6 then may be called multiple times on the same promise
         // 状态变为fulfilled或rejected后还调用then注册函数，直接执行。
         // 前面constructor中看出onFulfilled和onRejected都在宏任务队列中，所以这些也要放入队列，才能按顺序执行。
         setTimeout(function () {
-          success(self.value)
+          F(onFulfilled)(self.value)
         }, 0)
       } else if (self.status === STATUS.REJECTED) {
         setTimeout(function () {
-          fail(self.reason)
+          F(onRejected)(self.reason)
         }, 0)
       }
     })
