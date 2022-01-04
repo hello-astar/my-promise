@@ -2,7 +2,7 @@
  * @Description: promise模拟实现
  * @Author: astar
  * @Date: 2021-12-07 17:08:44
- * @LastEditTime: 2021-12-26 01:32:56
+ * @LastEditTime: 2022-01-04 03:36:41
  * @LastEditors: astar
  */
 // promise的三种状态
@@ -77,19 +77,19 @@ class MyPromise {
     // promise有且只有一个状态（pending或fulfilled或rejected），只有pending状态可以变为其它状态
     var resolve = function (value) {
       if (self.status === STATUS.PENDING) {
+        self.status = STATUS.FULFILLED
+        self.value = value
         // 使用异步编程，即使遇到同步任务也会先调用then函数注册回调队列
         setTimeout(() => {
-          self.status = STATUS.FULFILLED
-          self.value = value
           self.onFulfilledCallbacks.forEach(fn => fn(value))
         }, 0)
       }
     }
     var reject = function (reason) {
       if (self.status === STATUS.PENDING) {
+        self.status = STATUS.REJECTED
+        self.reason = reason
         setTimeout(() => {
-          self.status = STATUS.REJECTED
-          self.reason = reason
           self.onRejectedCallbacks.forEach(fn => fn(reason))
         }, 0)
       }
